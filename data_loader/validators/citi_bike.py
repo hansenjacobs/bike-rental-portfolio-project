@@ -19,40 +19,87 @@ class Input(pa.DataFrameModel):
     GENDER: int = pa.Field(alias='Gender', isin=[0, 1, 2])
 
 class Output(pa.DataFrameModel):
-    DURATION: int
-    START_TIME: pa.DateTime = pa.Field(nullable=False)
-    END_TIME: pa.DateTime = pa.Field(nullable=False)
-    START_STATION_ID: int = pa.Field(nullable=False)
-    START_STATION_NAME: str
-    START_STATION_LAT: float
-    START_STATION_LON: float
-    END_STATION_ID: int = pa.Field(nullable=False)
-    END_STATION_NAME: str
-    END_STATION_LAT: float
-    END_STATION_LON: float
-    BIKE_ID: int = pa.Field(nullable=False)
-    USER_TYPE: str = pa.Field(isin=['Subscriber','Customer'])
-    BIRTH_YEAR: int = pa.Field(nullable=True)
-    GENDER: str = pa.Field(isin=['F', 'M', 'U']),
-    TRIP_ID: str = pa.Field(nullable=False)
+    duration: int
+    start_datetime: pa.DateTime = pa.Field(nullable=False)
+    stop_datetime: pa.DateTime = pa.Field(nullable=False)
+    start_station_id: int = pa.Field(nullable=False)
+    start_station_name: str
+    start_station_latitude: float
+    start_station_longitude: float
+    stop_station_id: int = pa.Field(nullable=False)
+    stop_station_name: str
+    stop_station_latitude: float
+    stop_station_longitude: float
+    bike_id: int = pa.Field(nullable=False)
+    user_type: str = pa.Field(isin=['Subscriber','Customer'])
+    birth_year: int = pa.Field(nullable=True)
+    gender: str = pa.Field(isin=['F', 'M', 'U'])
+    id: str = pa.Field(nullable=False)
+
+def _get_station_df(df):
+    station_df = pd.concat(
+        [
+            df[['start_station_id', 'start_station_name', 'start_station_latitude', 'start_station_longitude']].rename(
+                columns={
+                    'start_station_id': 'id',
+                    'start_station_name': 'description',
+                    'start_station_latitude': 'latitude',
+                    'start_station_longitude': 'longitude',
+                }
+            ),
+            df[['stop_station_id', 'stop_station_name', 'stop_station_latitude', 'stop_station_longitude']].rename(
+                columns={
+                    'stop_station_id': 'id',
+                    'stop_station_name': 'description',
+                    'stop_station_latitude': 'latitude',
+                    'stop_station_longitude': 'longitude',
+                }
+            )
+        ]
+    )
+    return station_df.drop_duplicates(subset='id').reset_index(drop=True)
+
+
+def split_df_by_table(df):
+    retval = {}
+    bike_trips_table_fields = [
+        'duration',
+        'start_datetime',
+        'stop_datetime',
+        'start_station_id',
+        'stop_station_id',
+        'bike_id',
+        'user_type',
+        'birth_year',
+        'gender',
+        'id'
+    ]
+    table_fields = [
+        ('citi_bike.bike_stations', lambda df: _get_station_df(df)),
+        ('citi_bike.bike_trips', lambda df: df[bike_trips_table_fields])
+    ]
+    for table, get_df in table_fields:
+        retval[table] = get_df(df)
+    return retval
+
 
 def transform(df):
     col_renames = {
-        'Trip Duration': 'DURATION',
-        'Start Time': 'START_TIME',
-        'Stop Time': 'END_TIME',
-        'Start Station ID': 'START_STATION_ID',
-        'Start Station Name': 'START_STATION_NAME',
-        'Start Station Latitude': 'START_STATION_LAT',
-        'Start Station Longitude': 'START_STATION_LON',
-        'End Station ID': 'END_STATION_ID',
-        'End Station Name': 'END_STATION_NAME',
-        'End Station Latitude': 'END_STATION_LAT',
-        'End Station Longitude': 'END_STATION_LON',
-        'Bike ID': 'BIKE_ID',
-        'User Type': 'USER_TYPE',
-        'Birth Year': 'BIRTH_YEAR',
-        'Gender': 'GENDER',
+        'Trip Duration': 'duration',
+        'Start Time': 'start_datetime',
+        'Stop Time': 'stop_datetime',
+        'Start Station ID': 'start_station_id',
+        'Start Station Name': 'start_station_name',
+        'Start Station Latitude': 'start_station_latitude',
+        'Start Station Longitude': 'start_station_longitude',
+        'End Station ID': 'stop_station_id',
+        'End Station Name': 'stop_station_name',
+        'End Station Latitude': 'stop_station_latitude',
+        'End Station Longitude': 'stop_station_longitude',
+        'Bike ID': 'bike_id',
+        'User Type': 'user_type',
+        'Birth Year': 'birth_year',
+        'Gender': 'gender',
     }
     gender_map = {
         0: 'U',
@@ -60,9 +107,9 @@ def transform(df):
         2: 'F',
     }
     df.rename(columns=col_renames, inplace=True)
-    df['START_TIME'] = pd.to_datetime(df['START_TIME'])
-    df['END_TIME'] = pd.to_datetime(df['END_TIME'])
-    df['BIRTH_YEAR'] = df['BIRTH_YEAR'].astype('Int64') # Use 'Int64' to allow NaN values
-    df['GENDER'] = df['GENDER'].map(gender_map)
-    df['TRIP_ID'] = df.apply(lambda r: f"{r['BIKE_ID']}_{r['START_STATION_ID']}_{int(r['START_TIME'].timestamp())}")
+    df['start_datetime'] = pd.to_datetime(df['start_datetime'])
+    df['stop_datetime'] = pd.to_datetime(df['stop_datetime'])
+    df['birth_year'] = df['birth_year'].astype('Int64') # Use 'Int64' to allow NaN values
+    df['gender'] = df['gender'].map(gender_map)
+    df['id'] = df.apply(lambda r: f"{r['bike_id']}_{r['start_station_id']}_{int(r['start_datetime'].timestamp())}", axis=1)
     return df
