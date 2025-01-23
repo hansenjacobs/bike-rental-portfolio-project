@@ -1,0 +1,5 @@
+argparse
+pandas
+pandera
+psycopg2
+pydantic-settings

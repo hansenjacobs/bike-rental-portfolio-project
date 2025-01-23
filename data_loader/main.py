@@ -1,8 +1,11 @@
 import os
 import pandas as pd
-from .postgres_utils import execute as pg_execute, insert_df_to_table
+from .config import Config
+from .postgres_utils import get_db_connection, insert_df_to_table, execute as pg_execute
 
 def main(filename: str, data_type: str):
+    config = Config()
+    db_conn = get_db_connection(config=config)
     if not os.path.exists(filename):
         print(f'File {filename} does not exist.')
         return 1
@@ -24,7 +27,7 @@ def main(filename: str, data_type: str):
     
     try:
         for sql in validator.constraints_sql['drop']:
-            pg_execute(sql)
+            pg_execute(db_conn, sql)
             print(f'Constraints dropped successfully: {sql}')
 
         table_inserts = validator.split_df_by_table(df)
@@ -32,14 +35,14 @@ def main(filename: str, data_type: str):
         for table, df in table_inserts.items():
             print(f'Deleting from {table}')
             delete_sql, get_df = validator.cleanup_sql[table]
-            pg_execute(delete_sql, get_df(df))
+            pg_execute(db_conn, delete_sql, get_df(df))
             print(f'Inserting data into table: {table}')
-            insert_df_to_table(df, table)
+            insert_df_to_table(db_conn, df, table)
             print(f'Updated {table} successfully.')
 
     except Exception as error:
         print(f'ERROR: {error}')
     finally:
         for sql in validator.constraints_sql['add']:
-            pg_execute(sql)
+            pg_execute(db_conn, sql)
             print(f'Constraints added successfully: {sql}')
