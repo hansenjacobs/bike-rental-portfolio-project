@@ -14,7 +14,7 @@ class Input(pa.DataFrameModel):
     END_STATION_LAT: float = pa.Field(alias='End Station Latitude')
     END_STATION_LON: float = pa.Field(alias='End Station Longitude')
     BIKE_ID: int = pa.Field(alias='Bike ID', nullable=False)
-    USER_TYPE: str = pa.Field(alias='User Type', isin=['Subscriber','Customer'])
+    USER_TYPE: str = pa.Field(alias='User Type', isin=['Subscriber','Customer'], nullable=True)
     BIRTH_YEAR: float = pa.Field(alias='Birth Year', nullable=True)
     GENDER: int = pa.Field(alias='Gender', isin=[0, 1, 2])
 
@@ -31,7 +31,7 @@ class Output(pa.DataFrameModel):
     stop_station_latitude: float
     stop_station_longitude: float
     bike_id: int = pa.Field(nullable=False)
-    user_type: str = pa.Field(isin=['Subscriber','Customer'])
+    user_type: str = pa.Field(isin=['Subscriber','Customer'], nullable=True)
     birth_year: int = pa.Field(nullable=True)
     gender: str = pa.Field(isin=['F', 'M', 'U'])
     id: str = pa.Field(nullable=False)
@@ -113,3 +113,12 @@ def transform(df):
     df['gender'] = df['gender'].map(gender_map)
     df['id'] = df.apply(lambda r: f"{r['bike_id']}_{r['start_station_id']}_{int(r['start_datetime'].timestamp())}", axis=1)
     return df
+
+constraints_sql = {
+    'drop': ["alter table citi_bike.bike_trips drop constraint fk_bike_trips_bike_stations_start, drop constraint fk_bike_trips_bike_stations_stop",],
+    'add': ["alter table citi_bike.bike_trips add constraint fk_bike_trips_bike_stations_start foreign key(start_station_id) references citi_bike.bike_stations(id), add constraint fk_bike_trips_bike_stations_stop foreign key(stop_station_id) references citi_bike.bike_stations(id)",],
+}
+cleanup_sql = {
+    'citi_bike.bike_trips': ("delete from citi_bike.bike_trips where id in %(id)s", lambda df: {'id': tuple(set((df['id'].to_list())))}),
+    'citi_bike.bike_stations': ("delete from citi_bike.bike_stations where id in %(id)s", lambda df: {'id': tuple(set(df['id'].unique().tolist()))}),
+}

@@ -78,11 +78,13 @@ def split_df_by_table(df):
         'sun_duration_unit'
     ]
     table_fields = [
-        ('weather_stations', lambda df: _get_station_df(df)),
-        ('weather', lambda df: df[weather_table_fields])
+        ('citi_bike.weather_stations', lambda df: _get_station_df(df)),
+        ('citi_bike.weather', lambda df: df[weather_table_fields])
     ]
     for table, get_df in table_fields:
         retval[table] = get_df(df)
+    
+    return retval
 
 
 def transform(df):
@@ -117,3 +119,16 @@ def transform(df):
     df['temperature_minimum'] = df['temperature_minimum'].astype('Int64')
     df['sun_duration_unit'] = 'MINUTES'
     df['sun_duration'] = df['sun_duration'].astype('Int64')
+    return df
+
+constraints_sql = {
+    'drop': ["alter table citi_bike.weather drop constraint fk_weather_weather_station",],
+    'add': ["alter table citi_bike.weather add constraint fk_weather_weather_station foreign key(station_id) references citi_bike.weather_stations(id)",],
+}
+cleanup_sql = {
+    'citi_bike.weather': ("delete from citi_bike.weather where (reporting_date, station_id) in %(id)s", 
+            lambda df: {
+                'id': tuple(set(list(zip(df['reporting_date'].dt.strftime('%Y-%m-%d'), df['station_id']))))
+            }),
+    'citi_bike.weather_stations': ("delete from citi_bike.weather_stations where id in %(id)s", lambda df: {'id': tuple(set(df['id'].unique().tolist()))}),
+}

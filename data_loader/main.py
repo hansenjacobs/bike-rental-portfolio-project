@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from .postgres_utils import cleanup_sql, constraints_sql, execute as pg_execute, insert_df_to_table
+from .postgres_utils import execute as pg_execute, insert_df_to_table
 
 def main(filename: str, data_type: str):
     if not os.path.exists(filename):
@@ -23,23 +23,23 @@ def main(filename: str, data_type: str):
     print('Data validated successfully.')
     
     try:
-        pg_execute(constraints_sql[data_type]['drop'])
-        print('Constraints dropped successfully.')
-        for sql, get_values in cleanup_sql[data_type]:
-            if get_values:
-                values = get_values(df)
-                print(f'Cleaning up data with SQL: {sql} and values')
-                pg_execute(sql, values)
-            else:
-                print(f'Cleaning up data with SQL: {sql}')
-                pg_execute(sql)
+        for sql in validator.constraints_sql['drop']:
+            pg_execute(sql)
+            print(f'Constraints dropped successfully: {sql}')
 
         table_inserts = validator.split_df_by_table(df)
+
         for table, df in table_inserts.items():
+            print(f'Deleting from {table}')
+            delete_sql, get_df = validator.cleanup_sql[table]
+            pg_execute(delete_sql, get_df(df))
             print(f'Inserting data into table: {table}')
             insert_df_to_table(df, table)
+            print(f'Updated {table} successfully.')
 
     except Exception as error:
         print(f'ERROR: {error}')
     finally:
-        pg_execute(constraints_sql[data_type]['add'])
+        for sql in validator.constraints_sql['add']:
+            pg_execute(sql)
+            print(f'Constraints added successfully: {sql}')
