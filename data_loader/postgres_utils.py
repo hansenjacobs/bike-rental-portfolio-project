@@ -17,6 +17,7 @@ def get_db_connection(config=None, host=None, database=None, user=None, password
     except Exception as error:
         print(f'Error connecting to database: {error}')
 
+
 # TODO: Connection Pooling/Retry due to connection issues
 def insert_df_to_table(conn, df, table_name):
     df = df.replace({pd.isna: None, np_nan: None})
@@ -31,7 +32,8 @@ def insert_df_to_table(conn, df, table_name):
         print(f'Error: {error}')
         conn.rollback()
         cursor.close()
-    
+
+
 def execute(conn, sql, parameters=None):
     cursor = conn.cursor()
     try:

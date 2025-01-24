@@ -3,13 +3,14 @@ import pandas as pd
 from .config import Config
 from .postgres_utils import get_db_connection, insert_df_to_table, execute as pg_execute
 
+
 def main(filename: str, data_type: str):
     config = Config()
     db_conn = get_db_connection(config=config)
     if not os.path.exists(filename):
         print(f'File {filename} does not exist.')
         return 1
-    
+
     # TODO: Update import to be more dynamic, possible options: __import__, imp, or importlib
     match data_type:
         case 'trips':
@@ -24,7 +25,7 @@ def main(filename: str, data_type: str):
     validator.Output.validate(df, lazy=True)
 
     print('Data validated successfully.')
-    
+
     try:
         for sql in validator.constraints_sql['drop']:
             pg_execute(db_conn, sql)

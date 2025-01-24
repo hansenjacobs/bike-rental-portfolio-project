@@ -1,6 +1,7 @@
 import pandas as pd
 import pandera as pa
 
+
 class Input(pa.DataFrameModel):
     STATION: str = pa.Field(nullable=False)
     NAME: str = pa.Field(nullable=True)
@@ -18,6 +19,7 @@ class Input(pa.DataFrameModel):
     WDF5: float = pa.Field(nullable=True, coerce=True)
     WSF2: float = pa.Field(nullable=True)
     WSF5: float = pa.Field(nullable=True)
+
 
 class Output(pa.DataFrameModel):
     station_id: str = pa.Field(nullable=False)
@@ -83,12 +85,12 @@ def split_df_by_table(df):
     ]
     for table, get_df in table_fields:
         retval[table] = get_df(df)
-    
+
     return retval
 
 
 def transform(df):
-    col_renames  = {
+    col_renames = {
         'STATION': 'station_id',
         'NAME': 'station_name',
         'DATE': 'reporting_date',
@@ -121,14 +123,16 @@ def transform(df):
     df['sun_duration'] = df['sun_duration'].astype('Int64')
     return df
 
+
 constraints_sql = {
     'drop': ["alter table citi_bike.weather drop constraint fk_weather_weather_station",],
     'add': ["alter table citi_bike.weather add constraint fk_weather_weather_station foreign key(station_id) references citi_bike.weather_stations(id)",],
 }
 cleanup_sql = {
-    'citi_bike.weather': ("delete from citi_bike.weather where (reporting_date, station_id) in %(id)s", 
-            lambda df: {
-                'id': tuple(set(list(zip(df['reporting_date'].dt.strftime('%Y-%m-%d'), df['station_id']))))
-            }),
+    'citi_bike.weather': ("delete from citi_bike.weather where (reporting_date, station_id) in %(id)s",
+                          lambda df: {
+                              'id': tuple(set(list(zip(df['reporting_date'].dt.strftime('%Y-%m-%d'), df['station_id']))))
+                          }
+                          ),
     'citi_bike.weather_stations': ("delete from citi_bike.weather_stations where id in %(id)s", lambda df: {'id': tuple(set(df['id'].unique().tolist()))}),
 }

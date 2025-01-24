@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Config(BaseSettings):
     db_host: str = 'localhost'
     db_name: str = 'citi_bike'
