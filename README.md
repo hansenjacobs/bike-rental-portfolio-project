@@ -29,6 +29,8 @@ Using this information, the project will:
 ## To Do
 The current project works, but there would be changes/enhancements that I would like to implement:
 1. Create unit and integration/e2e testing
+1. Proper Logging
+1. Better connection handling for the database, implement retry logic for connection failures
 1. Move all of the SQL to the postgres utils. Keep only the most basic of information needed in the validators, such as, table names, constraint names, primary key fields
 1. Adjust functions and calls to always delete the incoming pk's from the table before inserting
 1. Better incoming data validation
