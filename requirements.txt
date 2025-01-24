@@ -1,4 +1,5 @@
 argparse
+flake8
 pandas
 pandera
 psycopg2
